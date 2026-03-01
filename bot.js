@@ -5,7 +5,7 @@ function createBot() {
     host: 'bbcv2.progamer.me',
     port: 25565,
     username: 'AFK-BOT',
-    version: false
+    version: 1.21.11
   })
 
   bot.on('spawn', () => {
