@@ -4,77 +4,72 @@ const mineflayer = require('mineflayer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Keep-Alive Web Server for Render
-app.get('/', (req, res) => res.send('Bot is active.'));
-app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
+// 1. Keep-Alive for Render
+app.get('/', (req, res) => res.send('Bot Status: Online'));
+app.listen(PORT, () => console.log(`Web server listening on ${PORT}`));
 
 // 2. Bot Configuration
-const botArgs = {
-  host: 'bbcv2.progamer.me',
-  port: 25565,
-  username: 'AFK_BOT_PRO',
-  version: false, // Auto-detects version to avoid 1.21.1 errors
-  checkTimeoutInterval: 60000 // Increases stability on slow hosts
+const createBot = () => {
+  const bot = mineflayer.createBot({
+    host: 'bbcv2.progamer.me',
+    port: 25565,
+    // Randomizing name slightly fixes "Duplicate UUID"
+    username: `AFK_BOT_${Math.floor(Math.random() * 999)}`, 
+    // FORCE 1.20.1 or 1.21: If 1.21 doesn't work, change this to '1.20.1'
+    // ViaVersion servers often handle older protocol versions more stably.
+    version: '1.21.1', 
+    hideErrors: true
+  });
+
+  bot.on('login', () => {
+    console.log(`[LOGIN] Joined as ${bot.username}. Waiting for spawn...`);
+  });
+
+  bot.on('spawn', () => {
+    console.log('[SPAWN] Bot is now in the world.');
+    
+    // Safety: only start moving if entity exists
+    if (bot.entity) {
+        bot.setControlState('jump', true);
+        setTimeout(() => bot.setControlState('jump', false), 1000);
+    }
+    
+    startAntiAFK(bot);
+  });
+
+  // Reconnect logic
+  bot.on('end', (reason) => {
+    console.log(`[DISCONNECT] Reason: ${reason}. Reconnecting in 20s...`);
+    // Clear all listeners to prevent memory leaks on Render
+    bot.removeAllListeners();
+    setTimeout(createBot, 20000); 
+  });
+
+  bot.on('error', (err) => {
+    console.error('[ERROR]', err.message);
+  });
 };
 
-let bot;
-
-function createBot() {
-  bot = mineflayer.createBot(botArgs);
-
-  // Fired when the handshake is successful
-  bot.once('login', () => {
-    console.log(`[LOG] Connected to ${botArgs.host}. Waiting for spawn...`);
-  });
-
-  // Fired when the bot is actually in the world
-  bot.once('spawn', () => {
-    console.log('[LOG] Bot spawned in-game.');
-    startMovement(bot);
-  });
-
-  // Handle being kicked (e.g., AFK kick or server restart)
-  bot.on('kicked', (reason) => {
-    console.log('[WARN] Kicked from server:', reason);
-  });
-
-  // Handle connection errors (e.g., server down)
-  bot.on('error', (err) => {
-    console.error('[ERROR] Connection issue:', err.message);
-  });
-
-  // Auto-Reconnect Logic
-  bot.on('end', () => {
-    console.log('[LOG] Disconnected. Reconnecting in 15 seconds...');
-    setTimeout(createBot, 15000);
-  });
-}
-
-// 3. Optimized Anti-AFK Logic
-function startMovement(bot) {
-  console.log('[LOG] Starting anti-AFK routine.');
-
-  // Constant slow forward pressure
-  bot.setControlState('forward', true);
-
+// 3. Optimized Anti-AFK (Randomized)
+function startAntiAFK(bot) {
   setInterval(() => {
     if (!bot.entity) return;
 
-    // Small jump to reset AFK timers
-    bot.setControlState('jump', true);
-    setTimeout(() => bot.setControlState('jump', false), 500);
+    // Random action: Jump, Rotate, or Swing Arm
+    const actions = ['jump', 'look', 'swing'];
+    const choice = actions[Math.floor(Math.random() * actions.length)];
 
-    // Look in a random direction
-    const yaw = (Math.random() - 0.5) * Math.PI;
-    const pitch = (Math.random() - 0.5) * Math.PI;
-    bot.look(yaw, pitch, false);
-
-    // Randomly toggle walking to simulate activity
-    const walking = Math.random() > 0.2;
-    bot.setControlState('forward', walking);
-
-  }, 20000); // Trigger every 20 seconds
+    if (choice === 'jump') {
+      bot.setControlState('jump', true);
+      setTimeout(() => bot.setControlState('jump', false), 500);
+    } else if (choice === 'look') {
+      const yaw = bot.entity.yaw + (Math.random() - 0.5) * 2;
+      bot.look(yaw, 0);
+    } else {
+      bot.swingArm('right');
+    }
+  }, 15000); // Every 15 seconds
 }
 
-// Initialize
+// Start the bot
 createBot();
