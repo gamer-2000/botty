@@ -11,7 +11,7 @@ app.listen(PORT, () => console.log(`Web server listening on ${PORT}`));
 // 2. Bot Configuration
 const createBot = () => {
   const bot = mineflayer.createBot({
-    host: 'bbcv2.progamer.me',
+    host: 'spydimc.falix.me',
     port: 25565,
     // Randomizing name slightly fixes "Duplicate UUID"
     username: `AFK_BOT_${Math.floor(Math.random() * 999)}`, 
